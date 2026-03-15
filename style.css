@@ -1,0 +1,19 @@
+:root {
+  --main-color: #3498db;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    height: 90vh;
+}
+
+.center-box {
+    background: var(--main-color);
+    /*margin: 15vh 45vh 15vh 45vh;*/
+    height: 50vh;
+    width: 80vh;
+    box-shadow: -5px 5px 15px 5px rgba(0, 0, 0, 0.544);
+}
