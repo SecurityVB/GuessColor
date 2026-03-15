@@ -1,8 +1,14 @@
 const root = document.querySelector(':root');
 const rootStyles = getComputedStyle(root);
 const mainColor = rootStyles.getPropertyValue('--main-color').trim();
+const container = document.querySelector('.color-picker-container');
+const btn = document.getElementById("enter");
+const txtLoser = document.getElementById("louser");
 let secondsLeft = 5.00;
 let timerInterval;
+let targetColor;
+let currentColor;
+let flagEvent = true;
 
 function randomHexColor() {
   let randomNum = Math.floor(Math.random() * 16777215);
@@ -12,22 +18,61 @@ function randomHexColor() {
   return fullHexCode;
 }
 
+function colorSimilarity(hex1, hex2) {
+    const c1 = parseInt(hex1.slice(1), 16);
+    const c2 = parseInt(hex2.slice(1), 16);
+
+    if (c1<c2) {
+        return c1/c2*100;
+    } else {
+        return c2/c1*100;
+    }
+}
+
 function startCountdown() {
     if (timerInterval) return;
 
+    let c = randomHexColor();
+
+    changeColor(c);
+    targetColor = c;
+
     timerInterval = setInterval(function () {
         secondsLeft -= 0.01;
-        
+            
         if (secondsLeft <= 0) {
             clearInterval(timerInterval);
             timerInterval = null;
             secondsLeft = 5.00;
-            changeColor();
-            cnt.removeEventListener("pointerdown")
+            flagEvent = false;
+            cnt.removeEventListener("pointerdown", startCountdown);
+            container.style.display = 'flex';
+            btn.style.display = 'inline-block';
+            Object.values(sliders).forEach(el => el.addEventListener('input', update));
+            update();
         } else {
+            container.style.display = 'none';
+            txtLoser.textContent = "";
             updateDisplay();
         }
     }, 10);
+
+}
+
+function guessColor() {
+    if (!(flagEvent)) {
+        flagEvent = true;
+        cnt.addEventListener("pointerdown", startCountdown);
+        btn.style.display = 'none';
+        console.log(colorSimilarity(currentColor, targetColor));
+        if (colorSimilarity(currentColor, targetColor) > 78) {
+            document.body.style.backgroundColor = "green";
+            txtLoser.textContent = "GOOD JOB BRO";
+        } else {
+            document.body.style.backgroundColor = "red";
+            txtLoser.textContent = "FUCKING LOOOSER";
+        }
+    }
 }
 
 function updateDisplay() {
@@ -38,13 +83,13 @@ function updateDisplay() {
 function changeColor(newColor="") {
     color = newColor ? newColor : randomHexColor()
     root.style.setProperty('--main-color', color);
-    tmr.textContent = 'Countdown Over!';
+    tmr.textContent = '0.00';
 }
 
 const cnt = document.getElementById("cnt");
 const tmr = document.getElementById("tmr");
-// cnt.addEventListener("pointerdown", startCountdown);
-
+cnt.addEventListener("pointerdown", startCountdown);
+btn.onclick = guessColor;
 
 const sliders = {
     hue: document.getElementById('hue-slider'),
@@ -69,6 +114,8 @@ function fitSliders() {
 }
 
 function update() {
+    if (timerInterval) return;
+
     const h = parseInt(sliders.hue.value);
     const s_val = parseInt(sliders.white.value);
     const v_val = parseInt(sliders.black.value);
@@ -83,10 +130,11 @@ function update() {
 
     const finalHex = hsvToHex(h, s, v);
     
-    console.clear();
-    console.log(`%c   `, `background: ${finalHex}; border: 1px solid #000; padding: 5px 15px;`);
-    console.log("Финальный HEX:", finalHex);
-    changeColor(finalHex)
+    // console.clear();
+    // console.log(`%c   `, `background: ${finalHex}; border: 1px solid #000; padding: 5px 15px;`);
+    // console.log(`%c   `, `background: ${targetColor}; border: 1px solid #000; padding: 5px 15px;`);
+    changeColor(finalHex);
+    currentColor = finalHex;
 }
 
 function hsvToHex(h, s, v) {
@@ -96,7 +144,10 @@ function hsvToHex(h, s, v) {
     return `#${rgb.join('')}`.toUpperCase();
 }
 
+
 Object.values(sliders).forEach(el => el.addEventListener('input', update));
 window.addEventListener('resize', fitSliders);
 fitSliders(); 
 update();
+container.style.display = 'none';
+btn.style.display = 'none';
