@@ -6,22 +6,18 @@ const btn = document.getElementById("enter");
 const txtLoser = document.getElementById("louser");
 let secondsLeft = 5.00;
 let timerInterval;
-let targetColor;
-let currentColor;
+let targetColor = [];
+let currentColor = [];
 let flagEvent = true;
 
-function randomHexColor() {
-  let randomNum = Math.floor(Math.random() * 16777215);
-  let hexCode = randomNum.toString(16); 
-  let fullHexCode = "#" + hexCode.padStart(6, '0'); 
-
-  return fullHexCode;
+function randomHsvColor() {
+  const h = Math.floor(Math.random() * 361);
+  const s = Math.floor(Math.random() * 101);
+  const v = Math.floor(Math.random() * 101);
+  return [h, s, v];
 }
 
-function colorSimilarity(hex1, hex2) {
-    const c1 = parseInt(hex1.slice(1), 16);
-    const c2 = parseInt(hex2.slice(1), 16);
-
+function percent(c1,c2) {
     if (c1<c2) {
         return c1/c2*100;
     } else {
@@ -29,10 +25,21 @@ function colorSimilarity(hex1, hex2) {
     }
 }
 
+function colorSimilarity(hsv1, hsv2) {
+    let diffH = Math.abs(hsv1[0] - hsv2[0]);
+    if (diffH > 180) diffH = 360 - diffH;
+    let hScore = (1 - diffH / 180) * 100;
+
+    let sScore = percent(hsv1[1] + 1, hsv2[1] + 1);
+    let vScore = percent(hsv1[2] + 1, hsv2[2] + 1);
+
+    return (hScore + sScore + vScore) / 3;
+}
+
 function startCountdown() {
     if (timerInterval) return;
 
-    let c = randomHexColor();
+    let c = randomHsvColor();
 
     changeColor(c);
     targetColor = c;
@@ -65,7 +72,7 @@ function guessColor() {
         cnt.addEventListener("pointerdown", startCountdown);
         btn.style.display = 'none';
         console.log(colorSimilarity(currentColor, targetColor));
-        if (colorSimilarity(currentColor, targetColor) > 78) {
+        if (colorSimilarity(currentColor, targetColor) > 80) {
             document.body.style.backgroundColor = "green";
             txtLoser.textContent = "GOOD JOB BRO";
         } else {
@@ -80,10 +87,9 @@ function updateDisplay() {
     tmr.textContent = seconds;
 }
 
-function changeColor(newColor="") {
-    color = newColor ? newColor : randomHexColor()
-    root.style.setProperty('--main-color', color);
-    tmr.textContent = '0.00';
+function changeColor(newColor) {
+    const colorStr = hsvToCss(newColor);
+    root.style.setProperty('--main-color', colorStr);
 }
 
 const cnt = document.getElementById("cnt");
@@ -117,33 +123,45 @@ function update() {
     if (timerInterval) return;
 
     const h = parseInt(sliders.hue.value);
-    const s_val = parseInt(sliders.white.value);
-    const v_val = parseInt(sliders.black.value);
+    const s = parseInt(sliders.white.value);
+    const v = parseInt(sliders.black.value);
 
     const baseColor = `hsl(${h}, 100%, 50%)`;
     
     cols.white.style.background = `linear-gradient(to bottom, #ffffff, ${baseColor})`;
     cols.black.style.background = `linear-gradient(to bottom, #000000, ${baseColor})`;
 
-    const s = s_val; 
-    const v = v_val;
-
-    const finalHex = hsvToHex(h, s, v);
+    const finalHSV = [h,s,v];
     
-    // console.clear();
-    // console.log(`%c   `, `background: ${finalHex}; border: 1px solid #000; padding: 5px 15px;`);
-    // console.log(`%c   `, `background: ${targetColor}; border: 1px solid #000; padding: 5px 15px;`);
-    changeColor(finalHex);
-    currentColor = finalHex;
+    changeColor(finalHSV);
+    currentColor = finalHSV;
 }
 
-function hsvToHex(h, s, v) {
-    s /= 100; v /= 100;
-    const f = (n, k = (n + h / 60) % 6) => v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
-    const rgb = [f(5), f(3), f(1)].map(x => Math.round(x * 255).toString(16).padStart(2, '0'));
-    return `#${rgb.join('')}`.toUpperCase();
-}
+function hsvToCss(hsvArray) {
+    let [h, s, v] = hsvArray;
+    h = h / 360;
+    s = s / 100;
+    v = v / 100;
 
+    let r, g, b;
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+
+    switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+    }
+
+    const color = `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+    return color;
+}
 
 Object.values(sliders).forEach(el => el.addEventListener('input', update));
 window.addEventListener('resize', fitSliders);
